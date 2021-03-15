@@ -1,0 +1,7 @@
+config/
+data/
+*.json
+__pycache__/
+fin/
+
+

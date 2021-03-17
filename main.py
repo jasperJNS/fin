@@ -2,7 +2,7 @@ import td
 
 import pprint as pp
 import pandas as pd
-pd.set_option('display.max_columns', 500)
+pd.set_option('display.max_columns', None)
 
 from login import login
 from options_chain import get_options_chain

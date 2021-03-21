@@ -59,12 +59,33 @@ class CallPut(MutableMapping):
         dateKeys = ['tradeTimeInLong', 'quoteTimeInLong', 'expirationDate', 'lastTradingDay']
         for key in dateKeys:
             self._values[key] = self.convert_readable_dates(self._values[key])
+    
+    def get_net_delta(self):
+        return self._values['totalVolume'] * self._values['delta']
+    
+    def get_volume(self):
+        return self._values['totalVolume']
+    
+    def get_open_interest(self):
+        return self._values['openInterest']
+
+    def convert_readable_dates(self, epoch):
+        '''
+            @param: date in epoch milliseconds
+            @return: human-readable date
+
+        '''
+        return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(epoch/1000.0))
 
     def __getitem__(self, key):
       return self._values[key]
   
     def __getattr__(self, attr):
         return self.get(attr)
+    
+    #for pickling
+    def __getstate__(self): return self.__dict__
+    def __setstate__(self, d): self.__dict__.update(d)
 
     def __setitem__(self, key, value):
         self._values[key] = value
@@ -98,11 +119,4 @@ class CallPut(MutableMapping):
     def _to_df(self):
         return pd.DataFrame.from_dict([self._values])
 
-    def convert_readable_dates(self, epoch):
-        '''
-            @param: date in epoch milliseconds
-            @return: human-readable date
-
-        '''
-        return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(epoch/1000.0))
-
+    

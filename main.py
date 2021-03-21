@@ -1,10 +1,12 @@
+import time
+from datetime import datetime
 import pprint as pp
 import pandas as pd
 pd.set_option('display.max_columns', None)
 
 from login import login
 from Fin import Fin
-from CallPut import CallPut
+
 
 def main_test():
     # session = login()
@@ -18,80 +20,21 @@ def main_test():
     # nio = Fin(session, nio_params)
 
     # # set from session object
-    # nio.set_chain()
-    # nio.write_file('nio_2021319')
+    # nio.set_calls_puts()
+    # nio.write_data('nio_chain')
+    return
 
 
-    # temp just for reading file
+def set_fin_object():
+    session = login()
     nio = Fin()
-    nio.read_file('nio_all_dates')
+    nio.read_json('nio_all_dates_3_19')
+    nio.set_calls_puts()
+    nio.set_session(session)
 
-    print('\n'*5)
-
-
-    chain = nio.get_chain()
-    chain_df = pd.DataFrame(chain)
-    print(chain_df.head())
-    chain_df.to_json('nio_all_dates.json', orient='records', indent=2)
-
-
-def json_test():
-    nio = Fin()
-    nio.read_json('nio_all_dates')
-    chain = nio.get_chain()
-
-    print("cols: ", chain.columns)
-
-    #these are universal across all dates
-    symbol = chain['symbol'].iloc[0]
-    underlying = chain['underlyingPrice'].iloc[0]
-    vol = chain['volatility'].iloc[0]
-    totalNumContracts = chain['numberOfContracts'].iloc[0]
-
-    '''
-        so each row in callexdatemap or putexpdatemap is date indexed
-
-        so let's unwrap, each row will be its own dataframe, records style
-
-        then overall data is a list of dates, then a dictionary of dates to their respective dfs
-
-
-    '''
-    print(chain.columns, chain.shape)
-
-    callsMap = chain['callExpDateMap']
-
-    #using the first strike of each expiry date chain to get the date of the chain
-    dates = []
-    calls = []
-    for idx, callMap in enumerate(callsMap):
-        for strikes in list(callsMap[idx].keys()):
-            strike = strikes
-            call = CallPut(dict(callsMap[idx][strike][0].items()))
-            
-            calls.append(call)
-            
-        #use last call in chain to get date
-        date = call.get('expirationDate')
-        dates.append(date)
-
-    puts = []
-    putsMap = chain['putExpDateMap']
-    for idx, putMap in enumerate(putsMap):
-        for strikes in list(putsMap[idx].keys()):
-            strike = strikes
-            put = CallPut(dict(putsMap[idx][strike][0].items()))
-            
-            puts.append(put)
-
-    for k, v in puts[0].items():
-        print(k, v)
-    for k, v in calls[0].items():
-        print(k, v)
-
-
+    nio.get_thirty_day_chart()
 
 
 
 if __name__ == '__main__':
-    json_test()
+    set_fin_object()

@@ -9,27 +9,24 @@ from Fin import Fin
 
 
 def main_test():
-    # session = login()
+    session = login()
 
-    # nio_params = {
-    #     'symbol': 'NIO',
-    #     'opt_range': 'all',
-    #     'exp_month': 'may'  #months up to, but NOT including {exp_month}
-    # }
+    nio_params = {
+        'symbol': 'NIO',
+        'opt_range': 'all'
+    }
 
-    # nio = Fin(session, nio_params)
+    nio = Fin(session, nio_params)
 
-    # # set from session object
-    # nio.set_calls_puts()
-    # nio.write_data('nio_chain')
+    # set from session object
+    nio.write_data('nio_all_dates_3_22')
     return
 
 
 def set_fin_object():
     session = login()
     nio = Fin()
-    nio.read_json('nio_all_dates_3_19')
-    nio.set_calls_puts()
+    nio.read_data('nio_all_dates_3_19')
     nio.set_session(session)
 
     nio.get_thirty_day_chart()
@@ -37,4 +34,5 @@ def set_fin_object():
 
 
 if __name__ == '__main__':
-    set_fin_object()
+    # set_fin_object()
+    main_test()

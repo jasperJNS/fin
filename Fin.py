@@ -14,9 +14,6 @@ class Fin:
         '''
         self.session = session
         self.opt_params = opt_params
-
-        if session is not None:
-            self._optchain = session.get_options_chain(option_chain=opt_params)
         
         self.symbol = None
         self.underlying = None
@@ -25,6 +22,12 @@ class Fin:
         self.nope = None
         self.nopeMAD = None
         self.data = {}
+
+        if session is not None:
+            self._optchain = session.get_options_chain(option_chain=opt_params)
+            self.set_calls_puts()
+        
+        
     
     def get_historical_data(self):
         # Define a list of all valid periods
@@ -157,10 +160,11 @@ class Fin:
         '''
         chain = self._get_chain()
 
-        self.symbol = chain['symbol'].iloc[0]
-        self.underlying = chain['underlyingPrice'].iloc[0]
-        self.vol = chain['volatility'].iloc[0]
-        self.totalNumContracts = chain['numberOfContracts'].iloc[0]
+
+        self.symbol = chain['symbol']
+        self.underlying = chain['underlyingPrice']
+        self.vol = chain['volatility']
+        self.totalNumContracts = chain['numberOfContracts']
 
         callsMap = chain['callExpDateMap']
         putsMap = chain['putExpDateMap']
@@ -170,27 +174,25 @@ class Fin:
         calls = []
         puts = []
 
-        for idx, callMap in enumerate(callsMap):
-            for strikes in list(callsMap[idx].keys()):
-                strike = strikes
-                call = CallPut(dict(callsMap[idx][strike][0].items()))
-                
+        for days, strikes in callsMap.items():
+            for strike, value in strikes.items():
+                call = CallPut(dict(value[0].items()))
                 calls.append(call)
-                
+            
             #use last call in chain to get date
-            date = call.get('expirationDate')
-            dates.append(date)
-
-        for idx, putMap in enumerate(putsMap):
-            for strikes in list(putsMap[idx].keys()):
-                strike = strikes
-                put = CallPut(dict(putsMap[idx][strike][0].items()))
-                
-                puts.append(put)
+            d = call.get('expirationDate')
+            dates.append(d)
         
+        for days, strikes in putsMap.items():
+            for strike, value in strikes.items():
+                put = CallPut(dict(value[0].items()))
+                puts.append(put)
+
         self.data['dates'] = dates
         self.data['calls'] = calls
         self.data['puts'] = puts
+        self.data['finData'] = [self.symbol, self.underlying, self.vol, self.totalNumContracts]
+
 
     def get_data(self):
         return self.data
@@ -203,22 +205,6 @@ class Fin:
 
     def set_opt_params(self, opt_params):
         self.opt_params = opt_params
-
-    def write_json(self, filename):
-        '''
-            writes to ./data
-            *should depecrate this later
-        '''
-        fname = './data/' + filename + '.json'
-        self._optchain.to_json(fname, orient='records', indent=2)
-    
-    def read_json(self, filename):
-        '''
-            sets optchain to dataframe(json file)
-            *should deprecate
-        '''
-        fname = './data/' + filename + '.json'
-        self._optchain = pd.read_json(fname, orient='records')
     
     def write_data(self, filename):
         '''
@@ -230,9 +216,10 @@ class Fin:
     
     def read_data(self, filename):
         '''
-            sets optchain to dataframe(json file)
+            sets calls and puts from pickle file
         '''
         fname = './data/' + filename + '.pkl'
         with open(fname, 'rb') as f:
             self.data = pickle.load(f)
+        
     

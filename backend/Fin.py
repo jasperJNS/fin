@@ -4,33 +4,75 @@ import pprint as pp
 from datetime import datetime, timedelta
 
 import pandas as pd
+import numpy as np
+import requests
+from newsapi import NewsApiClient
+
 
 from CallPut import CallPut
 
 class Fin:
     def __init__(self, session=None, opt_params=None):
         '''
-            sets chain on init with session and params objects
+            Primary object for handling stock queries for historical and options data
         '''
         self.session = session
         self.opt_params = opt_params
-        
+        self.data = {} #holds everything, for pickling
+
         self.symbol = None
+
+        self.newsQueryArticles = []
+        self.sector = []
+        self.category = None #growth or value
+
         self.underlying = None
-        self.vol = None
-        self.totalNumContracts = None
-
-        self.data = {}
-
         self.nope = None
         self.nopeMAD = None
+        
+        self.vol = None
+        self.totalNumContracts = None
+        
+        self.deltas = np.arange(-0.001, 0.999, 0.001)
 
 
         if session is not None and opt_params is not None:
             self._optchain = session.get_options_chain(option_chain=opt_params)
             self.set_calls_puts()
         
+    def get_news(self, key, q=None):
+        '''
+            Handles news feed for any searchable topic
+
+            @param q: Option to query for anything, not just stock tickers
+
+            @return:
+                q: list = [
+                    'source': {
+                        'id': id, sometimes null, usually matching name,
+                        'name': name of news source, ie Business Insider, etc
+                    }
+                    'author': author,
+                    'title': title,
+                    'description': description,
+                    'url': url,
+                    'urlToImage': url image (icon),
+                    'publishedAt': time/date published,
+                    'content': first couple sentences, then truncated with number of following chars
+                ]
+                    
+                }
+        '''
         
+        newsApi = NewsApiClient(api_key=key)
+        query = newsApi.get_everything(q=self.symbol, sort_by='popularity')
+
+        if query['status'] == 'ok':
+            self.newsQueryArticles = query['articles']
+            return self.newsQueryArticles
+        else:
+            raise FailedNewsException("No news found")
+
     
     def get_historical_data(self):
         # Define a list of all valid periods
@@ -176,6 +218,7 @@ class Fin:
         putsMap = chain['putExpDateMap']
 
         #using the first strike of each expiry date chain to get the date of the chain
+        expirationDates = {}
         dates = []
         calls = []
         puts = []
@@ -185,8 +228,11 @@ class Fin:
                 call = CallPut(dict(value[0].items()))
                 calls.append(call)
             
-            #use last call in chain to get date
-            d = call.get('expirationDate')
+            # date as key
+            d = call.get('expirationDate')[:10]
+            expirationDates[d] = []
+
+            # maintain list of dates
             dates.append(d)
         
         for days, strikes in putsMap.items():
@@ -194,15 +240,52 @@ class Fin:
                 put = CallPut(dict(value[0].items()))
                 puts.append(put)
 
+        for c in calls:
+            callDate = c.get('expirationDate')
+            if callDate in expirationDates.keys():
+                expirationDates[callDate].append(c)
+
+        for p in puts:
+            putDate = p.get('expirationDate')
+            if putDate in expirationDates.keys():
+                expirationDates[putDate].append(p)
+
+        #storing in a dict for general use
+        self.data['options'] = expirationDates
         self.data['dates'] = dates
+
+        #separated for NOPE calculations, among others
         self.data['calls'] = calls
         self.data['puts'] = puts
+
         self.data['finData'] = {
             'symbol': self.symbol,
             'underlying': self.underlying,
             'vol': self.vol,
             'totalNumContracts': self.totalNumContracts
         }
+
+    def get_options_by_delta(self, date, delta):
+        '''
+            Get options at date with strikes ranging from ATM(d = 0.5) outward to the delta provided
+            @params delta:
+                float range from 0.001 to 0.999 inclusive
+
+            @return:
+                list of strikes
+        '''
+        if delta not in self.deltas:
+            raise InvalidDeltaException("Invalid Delta")
+        
+        minDelta = 0.5 - delta
+        maxDelta = 0.5 + delta
+
+
+        for callput in self.data['options'][date]:
+            delt = callput.delta
+            if delt >= minDelta and delt <= maxDelta:
+                print(callput)
+    
 
 
     def get_data(self):
@@ -247,3 +330,9 @@ class Fin:
         # self.vol = finData['vol']
         # self.totalNumContracts = finData['totalNumContracts']
     
+
+class FailedNewsException(Exception):
+    pass
+
+class InvalidDeltaException(Exception):
+    pass

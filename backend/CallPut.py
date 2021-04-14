@@ -58,18 +58,22 @@ class CallPut(MutableMapping):
         #convert dates to readable
         dateKeys = ['tradeTimeInLong', 'quoteTimeInLong', 'expirationDate', 'lastTradingDay']
         for key in dateKeys:
-            self._values[key] = self.convert_readable_dates(self._values[key])
-    
-    def get_net_delta(self):
-        return self._values['totalVolume'] * self._values['delta']
-    
-    def get_volume(self):
-        return self._values['totalVolume']
-    
-    def get_open_interest(self):
-        return self._values['openInterest']
+            self._values[key] = self._convert_readable_dates(self._values[key])
+        
+        #only need y/m/d for expiration date
+        self._values['expirationDate'] = self._values['expirationDate'][:10]
 
-    def convert_readable_dates(self, epoch):
+        # set for dot notation access
+        for key in self._values:
+            setattr(self, key, self._values[key])
+
+    def __repr__(self):
+        return f'putCall={self.putCall}, expDate={self.expirationDate}, strike={self.strikePrice}, date={self.expirationDate}, bid={self.bid}, ask={self.ask}, volume={self.totalVolume}, openInterest={self.openInterest}, delta={self.delta}, gamma={self.gamma}, theta={self.theta}, vega={self.vega}, theoIV={self.theoreticalVolatility}, IV={self.volatility}'
+
+    def get_net_delta(self):
+        return self.totalVolume * self.delta
+    
+    def _convert_readable_dates(self, epoch):
         '''
             @param: date in epoch milliseconds
             @return: human-readable date

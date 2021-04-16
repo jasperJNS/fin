@@ -1,0 +1,23 @@
+.box {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.chart {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
+    display: table-cell;
+    vertical-align: top;
+    width: 75%;
+    height: 100%;
+}
+
+.control-panel {
+    display: table-cell;
+    position: absolute;
+    width: 25%;
+    height: 100%;
+}

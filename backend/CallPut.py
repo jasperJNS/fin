@@ -73,6 +73,9 @@ class CallPut(MutableMapping):
     def get_net_delta(self):
         return self.totalVolume * self.delta
     
+    def get_net_gamma(self):
+        return self.totalVolume * self.gamma
+    
     def _convert_readable_dates(self, epoch):
         '''
             @param: date in epoch milliseconds

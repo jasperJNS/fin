@@ -4,6 +4,9 @@ import pickle
 import pprint as pp
 import pandas as pd
 import json
+import math
+from pathlib import Path
+
 from config.config import NEWSAPI_KEY
 pd.set_option('display.max_columns', None)
 
@@ -37,83 +40,62 @@ def main_test():
 def pickle_data():
     session = login()
 
+    symbol = 'QQQ'
     params = {
-        'symbol': 'QQQ',
+        'symbol': symbol,
         'opt_range': 'all'
     }
 
     qqq = Fin(session, params)
     data = qqq.get_data()
 
-    
-    with open('qqq_options.pkl', 'wb') as f:
+    date = datetime.today().timestamp()
+    fdate = time.strftime('%Y_%m_%d_%H:%M', time.gmtime(date))
+    fdate = symbol + "_" + fdate
+    fdir = Path.cwd() / 'backend/data' 
+    with open('%s/%s'%(fdir, fdate), 'wb') as f:
         pickle.dump(data, f)
 
 def read_pickle():
-    with open('qqq_options.pkl', 'rb') as f:
+    fdir = Path.cwd() / 'backend/data/' 
+    with open('%s/QQQ_2021_04_16_17:35'%fdir, 'rb') as f:
         data = pickle.load(f)
-    options = data['options']
-    dates = data['dates']
+    
 
-    finData = data['finData']
-    underlying = finData['underlying']
-    vol = finData['vol']
-    totalContracts = finData['totalNumContracts']
+    # print('for date: ', d)
+    # # getting calls within 30 delta
+    # for calls in new_opt:
+    #     delt = calls.delta
+    #     if delt >= minDeltaCalls and delt <= maxDeltaCalls:
+    #         print(calls)
 
-    quote = data['quote']
-    print('quote:')
-    for k, v in quote.items():
-        print(k, v)
+    # minDeltaPuts = -minDeltaCalls
+    # maxDeltaPuts = -maxDeltaCalls
 
-    # print('underlying: ', underlying)
-    # print('vol: ', vol)
-    # print('totalContracts: ', totalContracts)
-
-
-
-    deltas = set()
-    d = dates[1]
-    opt = options[d]
-
-    deltaLimit = 0.1
-    minDeltaCalls = 0.5 - deltaLimit
-    maxDeltaCalls = 0.5 + deltaLimit
-
-    # getting calls within 30 delta
-    for calls in opt:
-        delt = calls.delta
-        if delt >= minDeltaCalls and delt <= maxDeltaCalls:
-            print(calls)
-
-    minDeltaPuts = -minDeltaCalls
-    maxDeltaPuts = -maxDeltaCalls
-
-    # getting puts within -30 delta
-    for puts in opt:
-        delt = puts.delta
-        if delt <= minDeltaPuts and delt >= maxDeltaPuts:
-            print(puts)
+    # # getting puts within -30 delta
+    # for puts in new_opt:
+    #     delt = puts.delta
+    #     if delt <= minDeltaPuts and delt >= maxDeltaPuts:
+    #         print(puts)
 
 
 
 
 def set_fin_object():
-    session = login()
-    qqq = Fin()
-    qqq.read_data('nio_all_dates_3_22')
-    nio.set_session(session)
 
-    nio.get_thirty_day_chart()
+    fname = 'QQQ_2021_04_15_18:02'
+    ticker = Fin()
+    ticker.read_data(fname)
 
-
-
-if __name__ == '__main__':
-    read_pickle()
     
-    # with open('baba_reg_news.json', 'w') as f:
-    #     json.dump(headline, f, indent=4)
+    ticker.get_options_by_delta(1, 0.4)
 
-    # s = Search()
+    callGamma, putGamma = ticker.calculate_net_gamma()
+    print(callGamma/putGamma)
 
-    # eq = s.show_options('equities') 
-    # pp.pprint(eq, indent=4)
+
+# if __name__ == '__main__':
+#     # read_pickle()
+#     # pickle_data()
+#     set_fin_object()
+    

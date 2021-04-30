@@ -1,7 +1,9 @@
 import pickle
+from pathlib import Path
 import time
 import pprint as pp
 from datetime import datetime, timedelta
+import math
 
 import pandas as pd
 import numpy as np
@@ -30,7 +32,7 @@ class Fin:
         self.nope = None
         self.nopeMAD = None
         
-        self.vol = None # not sure which volatility this is (realized, historical? neither fit)
+        self.vol = None # needs to be computed as aggregate of IV of all option strikes
         self.totalNumContracts = None
         self.totalVolume = None
         
@@ -93,8 +95,54 @@ class Fin:
             netPutData += put.get_net_delta()
 
         #for now using open interest as a proxy for shares traded, but def not accurate
-        self.nope = (netCallDelta - netPutData) / totalVolume
+        return (netCallDelta - netPutData) / totalVolume
+    
+    def calculate_net_gamma(self):
+        '''
+            Calculate total gamma. Relates to put/call parity.
+        '''
+        calls = self.data['calls']
+        puts = self.data['puts']
+
+        netCallGamma = 0
+        netPutGamma = 0
+
+        for call in calls:
+            netCallGamma += call.get_net_gamma()
         
+        for put in puts:
+            netPutGamma += put.get_net_gamma()
+
+        return netCallGamma, netPutGamma
+
+    def get_options_by_delta(self, date: int, deltaRange: float):
+        '''
+            Get options at date with strikes ranging from ATM(d = 0.5) outward to the delta provided
+            @params 
+            delta: float range from 0.001 to 0.999 inclusive
+            date: int index from nearest to furthest date
+
+            @return:
+                list of strikes
+        '''
+        if deltaRange not in self.deltas:
+            raise InvalidDeltaException("Invalid Delta")
+
+        expDate = self.data['dates'][date]
+
+        minDelta = 0.5 - deltaRange
+        maxDelta = 0.5 + deltaRange
+        
+        for callput in self.data['options'][expDate]:
+            delt = abs(callput.delta)
+            if delt >= minDelta and delt <= maxDelta:
+                print("in range: ", callput)
+     
+    def interpolate_deltas(self):
+        '''
+            Handles NaN or -999 that occasionally pop up from TDA's API
+
+        '''
     def _get_quote(self):
         instruments = [self.symbol]
         quote = self.session.get_quotes(instruments=instruments)
@@ -112,7 +160,6 @@ class Fin:
 
         self.symbol = chain['symbol']
         self.underlying = chain['underlyingPrice']
-        self.vol = chain['volatility']
         self.totalNumContracts = chain['numberOfContracts']
 
         callsMap = chain['callExpDateMap']
@@ -168,134 +215,9 @@ class Fin:
         self.data['finData'] = {
             'symbol': self.symbol,
             'underlying': self.underlying,
-            'vol': self.vol,
             'totalNumContracts': self.totalNumContracts
         }
-
-    def get_options_by_delta(self, date: int, deltaRange: float):
-        '''
-            Get options at date with strikes ranging from ATM(d = 0.5) outward to the delta provided
-            @params 
-            delta: float range from 0.001 to 0.999 inclusive
-            date: int index from nearest to furthest date
-
-            @return:
-                list of strikes
-        '''
-        if delta not in self.deltas:
-            raise InvalidDeltaException("Invalid Delta")
-        
-        minDelta = 0.5 - deltaRange
-        maxDelta = 0.5 + deltaRange
-        expDate = self.data['dates'][date]
-
-
-        for callput in self.data['options'][expDate]:
-            delt = callput.delta
-            if delt >= minDelta and delt <= maxDelta:
-                print(callput)
-    
-    def get_historical_data(self):
-        # Define a list of all valid periods
-        periodValues = {
-            'minute': {
-                'day': [1, 2, 3, 4, 5, 10]
-            },
-            'daily': {
-                'month': [1, 2, 3, 6],
-                'year': [1, 2, 3, 5, 10, 15, 20],
-                'ytd': [1]
-            },
-            'weekly': {
-                'month': [1, 2, 3, 6],
-                'year': [1, 2, 3, 5, 10, 15, 20],
-                'ytd': [1]
-            },
-            'monthly': {
-                'year': [1, 2, 3, 5, 10, 15, 20]
-            }
-        }
-
-        minuteFrequencies = [1, 5, 10, 15, 30]
-
-        hist_symbol = self.symbol
-        hist_needExtendedHoursData = True
-
-        hist_data = []
-
-        for freqType in periodValues.keys():
-            freqPeriods = periodValues[freqType]
-
-            for freqPeriod in freqPeriods.keys():
-                possibleValues = freqPeriods[freqPeriod]
-
-                for val in possibleValues:
-
-                    hist_periodType = freqPeriod
-                    hist_period = val
-                    hist_frequencyType = freqType
-                    hist_frequency = 1
-
-                    historical_1_minute = self.session.get_price_history(
-                        symbol=hist_symbol,
-                        period_type=hist_periodType,
-                        period=hist_period,
-                        frequency_type=hist_frequencyType,
-                        frequency=hist_frequency,
-                        extended_hours=hist_needExtendedHoursData
-                    )
-
-                    hist_data.append(historical_1_minute)
-        
-        self.hist_data = hist_data
-    
-    def get_thirty_day_chart(self):
-        # The max look back period for minute data is 31 Days.
-        lookback_period = 31
-
-        # Define today.
-        today_00 = datetime.now()
-
-        # Define 300 days ago.
-        today_ago = datetime.now() - timedelta(days=lookback_period)
-
-        # The TD API expects a timestamp in milliseconds. However, the timestamp() 
-        # method only returns to seconds so multiply it by 1000.
-        today_00 = str(int(round(today_00.timestamp() * 1000)))
-        today_ago = str(int(round(today_ago.timestamp() * 1000)))
-
-        # These values will now be our startDate and endDate parameters.
-        hist_startDate = today_ago
-        hist_endDate = today_00
-
-        # Define the dynamic arguments, PERIOD IS NOT NEEDED!!!!
-        hist_symbol = self.symbol
-        hist_needExtendedHoursData = True
-        hist_periodType = 'day'
-
-        #make sure frequency type is correct, else its read as a malformed header -> 400
-        hist_frequencyType = 'minute'
-        hist_frequency = 1
-
-        # Make the request
-        historical_custom = self.session.get_price_history(
-            symbol=hist_symbol,
-            period_type=hist_periodType,
-            frequency_type=hist_frequencyType,
-            start_date=hist_startDate,
-            end_date=hist_endDate,
-            frequency=hist_frequency,
-            extended_hours=hist_needExtendedHoursData
-        )
-
-        # Grab the candle count.
-        candle_count = len(historical_custom['candles'])
-        print('For PERIOD TYPE {} with CUSTOM PERIOD {} you got {} candles.'.format(
-            hist_periodType, lookback_period, candle_count)
-        )
-
-        
-
+ 
     def get_data(self):
         return self.data
 
@@ -320,23 +242,25 @@ class Fin:
         '''
             sets calls and puts from pickle file
         '''
-        fname = './data/' + filename + '.pkl'
-        with open(fname, 'rb') as f:
+        fdir = Path.cwd() / 'backend/data/'
+
+        with open('%s/%s'%(fdir, filename), 'rb') as f:
             self.data = pickle.load(f)
 
+        #set underlying data
+        self.totalVolume = self.data['quote']['totalVolume']
+
         finData = self.data['finData']
+        self.symbol = finData['symbol']
+        self.underlying = finData['underlying']
+        self.totalNumContracts = finData['totalNumContracts']
+
+        
         print('findata: ', finData)
 
-        self.symbol = finData[0]
-        self.underlying = finData[1]
-        self.vol = finData[2]
-        self.totalNumContracts = finData[3]
 
 
-        # self.symbol = finData['symbol']
-        # self.underlying = finData['underlying']
-        # self.vol = finData['vol']
-        # self.totalNumContracts = finData['totalNumContracts']
+
     
 
 class FailedNewsException(Exception):

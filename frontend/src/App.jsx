@@ -1,10 +1,22 @@
 import './App.css';
+import React from 'react';
+import {useState} from 'react';
+import StockForm from './components/Form';
+import OptionChain from './components/OptionChain';
 
 function App() {
-  return (
-    <div>
+  const [tickers, setTickers] = useState([]);
 
-    </div>
+  const addTicker = (ticker) => {
+    let stocks = [...tickers, ticker];
+    setTickers(stocks);
+  }
+
+  return (
+    <section>
+      <StockForm addStockLog={addTicker}/>
+      <OptionChain stocks={tickers}/>
+    </section>
   );
 }
 

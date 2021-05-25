@@ -4,14 +4,18 @@ import time
 import pprint as pp
 from datetime import datetime, timedelta
 import math
+import json
 
 import pandas as pd
 import numpy as np
+import plotly.express as px
 import requests
 from newsapi import NewsApiClient
 
+from .historical import get_history
 
-from CallPut import CallPut
+
+from .CallPut import CallPut
 
 class Fin:
     def __init__(self, session=None, opt_params: dict = {}):
@@ -42,7 +46,81 @@ class Fin:
         if session is not None and opt_params is not None:
             self._optchain = session.get_options_chain(option_chain=opt_params)
             self.set_data()
+    
+    def _gkyz(self, opn, prevClose, high, low, close):
+        return  (np.log(opn/prevClose))**2 + 0.5*((np.log(high/low))**2) - (2 * np.log(2)-1)*((np.log(close/opn))**2)
+    
+    def _pkson(self, high, low):
+        c = 1/(4*np.log(2))
+        return c, (np.log(high/low))**2
+
+    def get_historical_volatility(self, vol_params):
+        '''
+            Historical volatility using the Garman-Klass-Yang-Zhang formula
+
+            @scale: number of days to scale for volatility
+            @
+        '''
         
+        periodCount = vol_params['periodCount']
+        periodType = vol_params['periodType']
+        candleSize = vol_params['candleSize']
+        candleTick = vol_params['candleTick']
+
+        endDate = vol_params['endDate']
+        scale = vol_params['scale']
+        scale_factor = np.sqrt(scale)
+
+        h_dates = get_history(
+            self,
+            periodCount=periodCount,
+            periodType=periodType,
+            freqType=candleSize,
+            frequency=candleTick,
+            day_n=endDate
+        )
+        
+        
+
+        numDays = len(h_dates)
+        ohlc = np.empty(numDays)
+
+        variance = 0
+        pknson_const = None
+        vari = []
+        varDays = []
+        for i in range(numDays):
+            if i > 0:
+                s = self._gkyz(
+                    opn=h_dates[i]['open'],
+                    prevClose=h_dates[i-1]['close'],
+                    high=h_dates[i]['high'],
+                    low=h_dates[i]['low'],
+                    close=h_dates[i]['close']
+                )
+
+                # pknson_const, s = self._pkson(high=h_dates[i]['high'], low=h_dates[i]['low'])
+                variance += s
+                vari.append(s)
+                varDays.append(h_dates[i]['date'])
+                print("rVol for ", h_dates[i]['date'], ": ", s*scale_factor)
+
+        # variance *= pknson_const
+
+        variance /= numDays - 1
+        sigma = np.sqrt(variance)
+        print("gkyz sigma: ", sigma)
+        # print("parksinon sigma: ", sigma)
+        annualized = scale_factor * sigma
+        print("%s annualized vol from past %s days: "%(self.symbol, periodCount), annualized)
+
+        df = pd.DataFrame(list(zip(varDays, vari)), columns=['date', 'volatility'])
+        return df
+        
+        
+
+
+
     def get_news(self, key, q: list = []):
         '''
             Handles news feed for any searchable topic
@@ -92,12 +170,13 @@ class Fin:
             netCallDelta += call.get_net_delta()
         
         for put in puts:
-            netPutData += put.get_net_delta()
+            netPutDelta += put.get_net_delta()
 
         #for now using open interest as a proxy for shares traded, but def not accurate
-        return (netCallDelta - netPutData) / totalVolume
+        return (netCallDelta - netPutDelta) / totalVolume
     
-    def calculate_net_gamma(self):
+
+    def calculate_gex(self):
         '''
             Calculate total gamma. Relates to put/call parity.
         '''
@@ -113,7 +192,7 @@ class Fin:
         for put in puts:
             netPutGamma += put.get_net_gamma()
 
-        return netCallGamma, netPutGamma
+        return netCallGamma - netPutGamma
 
     def get_options_by_delta(self, date: int, deltaRange: float):
         '''
@@ -143,6 +222,8 @@ class Fin:
             Handles NaN or -999 that occasionally pop up from TDA's API
 
         '''
+        pass
+
     def _get_quote(self):
         instruments = [self.symbol]
         quote = self.session.get_quotes(instruments=instruments)
@@ -220,6 +301,10 @@ class Fin:
  
     def get_data(self):
         return self.data
+    
+    def get_json(self):
+        
+        return json.dumps(self.data)
 
     def _get_chain(self):
         return self._optchain

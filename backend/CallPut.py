@@ -1,59 +1,64 @@
 import time
 from datetime import datetime
 from collections.abc import MutableMapping
+import json
 
 class CallPut(MutableMapping):
     def __init__(self, *args, **kwargs):
-        self._values = {
-            'putCall': '',
-            'symbol': '',
-            'description': '',
-            'exchangeName': '',
-            'bid': '',
-            'ask': '',
-            'last': '',
-            'mark': '',
-            'bidSize': '',
-            'askSize': '',
-            'bidAskSize': '',
-            'lastSize': '',
-            'highPrice': '',
-            'lowPrice': '',
-            'openPrice': '',
-            'closePrice': '',
-            'totalVolume': '',
-            'tradeDate': '',
-            'tradeTimeInLong': '',
-            'quoteTimeInLong': '',
-            'netChange': '',
-            'volatility': '',
-            'delta': '',
-            'gamma': '',
-            'theta': '',
-            'vega': '',
-            'rho': '',
-            'openInterest': '',
-            'timeValue': '',
-            'theoreticalOptionValue': '',
-            'theoreticalVolatility': '',
-            'optionDeliverablesList': '',
-            'strikePrice': '',
-            'expirationDate': '',
-            'daysToExpiration': '',
-            'expirationType': '',
-            'lastTradingDay': '',
-            'multiplier': '',
-            'settlementType': '',
-            'deliverableNote': '',
-            'isIndexOption': '',
-            'percentChange': '',
-            'markChange': '',
-            'markPercentChange': '',
-            'mini': '',
-            'nonStandard': '',
-            'inTheMoney': ''
-        }
-        self.update(dict(*args, **kwargs))
+        # self._values = {
+        #     'putCall': '',
+        #     'symbol': '',
+        #     'description': '',
+        #     'exchangeName': '',
+        #     'bid': '',
+        #     'ask': '',
+        #     'last': '',
+        #     'mark': '',
+        #     'bidSize': '',
+        #     'askSize': '',
+        #     'bidAskSize': '',
+        #     'lastSize': '',
+        #     'highPrice': '',
+        #     'lowPrice': '',
+        #     'openPrice': '',
+        #     'closePrice': '',
+        #     'totalVolume': '',
+        #     'tradeDate': '',
+        #     'tradeTimeInLong': '',
+        #     'quoteTimeInLong': '',
+        #     'netChange': '',
+        #     'volatility': '',
+        #     'delta': '',
+        #     'gamma': '',
+        #     'theta': '',
+        #     'vega': '',
+        #     'rho': '',
+        #     'openInterest': '',
+        #     'timeValue': '',
+        #     'theoreticalOptionValue': '',
+        #     'theoreticalVolatility': '',
+        #     'optionDeliverablesList': '',
+        #     'strikePrice': '',
+        #     'expirationDate': '',
+        #     'daysToExpiration': '',
+        #     'expirationType': '',
+        #     'lastTradingDay': '',
+        #     'multiplier': '',
+        #     'settlementType': '',
+        #     'deliverableNote': '',
+        #     'isIndexOption': '',
+        #     'percentChange': '',
+        #     'markChange': '',
+        #     'markPercentChange': '',
+        #     'mini': '',
+        #     'nonStandard': '',
+        #     'inTheMoney': ''
+        # }
+        self._values = dict(*args, **kwargs)
+
+        # set for dot notation access
+        for key in kwargs:
+            setattr(self, key, kwargs[key])
 
         #convert dates to readable
         dateKeys = ['tradeTimeInLong', 'quoteTimeInLong', 'expirationDate', 'lastTradingDay']
@@ -63,9 +68,6 @@ class CallPut(MutableMapping):
         #only need y/m/d for expiration date
         self._values['expirationDate'] = self._values['expirationDate'][:10]
 
-        # set for dot notation access
-        for key in self._values:
-            setattr(self, key, self._values[key])
 
     def __repr__(self):
         return f'putCall={self.putCall}, expDate={self.expirationDate}, strike={self.strikePrice}, date={self.expirationDate}, bid={self.bid}, ask={self.ask}, volume={self.totalVolume}, openInterest={self.openInterest}, delta={self.delta}, gamma={self.gamma}, theta={self.theta}, vega={self.vega}, theoIV={self.theoreticalVolatility}, IV={self.volatility}'
@@ -74,7 +76,7 @@ class CallPut(MutableMapping):
         return self.totalVolume * self.delta
     
     def get_net_gamma(self):
-        return self.totalVolume * self.gamma
+        return self.openInterest * self.gamma
     
     def _convert_readable_dates(self, epoch):
         '''

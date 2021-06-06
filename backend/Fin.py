@@ -247,7 +247,7 @@ class Fin:
         putsMap = chain['putExpDateMap']
 
         #using the first strike of each expiry date chain to get the date of the chain
-        expirationDates = {}
+        options = {}
         dates = []
         calls = []
         puts = []
@@ -259,7 +259,7 @@ class Fin:
             
             # date as key
             d = call.get('expirationDate')[:10]
-            expirationDates[d] = []
+            options[d] = []
 
             # maintain list of dates
             dates.append(d)
@@ -270,18 +270,18 @@ class Fin:
                 puts.append(put)
 
         for c in calls:
-            callDate = c.get('expirationDate')
-            if callDate in expirationDates.keys():
-                expirationDates[callDate].append(c)
+            callDate = c.expirationDate
+            if callDate in options.keys():
+                options[callDate].append(c)
 
         for p in puts:
-            putDate = p.get('expirationDate')
-            if putDate in expirationDates.keys():
-                expirationDates[putDate].append(p)
+            putDate = p.expirationDate
+            if putDate in options.keys():
+                options[putDate].append(p)
 
         #storing in a dict for general use
-        self.data['options'] = expirationDates
-        self.data['dates'] = dates
+        self.data['options'] = options
+        self.data['dates'] = {d: None for d in dates}
 
         #separated for NOPE calculations, among others
         self.data['calls'] = calls
@@ -303,8 +303,25 @@ class Fin:
         return self.data
     
     def get_json(self):
+        calls, puts = [], []
+        for c in self.data['calls']:
+            calls.append(vars(c))
+
+        for p in self.data['puts']:
+            puts.append(vars(p))
         
-        return json.dumps(self.data)
+        for day, value in self.data['options'].items():
+            options = []
+            for option in value:
+                options.append(vars(option))
+            self.data['dates'][day] = options
+        
+
+        data = {}
+        data['finData'] = self.data['finData']
+        data['dates'] = self.data['dates']
+
+        return json.dumps(data)
 
     def _get_chain(self):
         return self._optchain

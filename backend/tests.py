@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pickle
 import pprint as pp
 import pandas as pd
@@ -7,38 +7,33 @@ import json
 import math
 from pathlib import Path
 
-from config.config import NEWSAPI_KEY
+from backend.config import config
+NEWSAPI_KEY = config.NEWSAPI_KEY
 pd.set_option('display.max_columns', None)
 
-from login import login
-from Fin import Fin
-from Search import Search
+from backend.login import api_login
+from backend.Fin import Fin
+from backend.Search import Search
+from backend.historical import get_history
 
 
-def main_test():
-    session = login()
+def get_fin(ticker):
+    session = api_login()
 
     params = {
-        'symbol': 'GME',
+        'symbol': ticker,
         'opt_range': 'all'
     }
 
-    gme = Fin(session, params)
+    fin = Fin(session, params)
 
-    # set from session object
-    # data = nio.get_data()
-    # nio.get_thirty_day_chart()
-
-    #get news
-    # gme_news = gme.get_news(NEWSAPI_KEY)
-
-   
+    data = fin.get_json()
 
     
-    return
+    return data
 
 def pickle_data():
-    session = login()
+    session = api_login()
 
     symbol = 'QQQ'
     params = {
@@ -94,8 +89,29 @@ def set_fin_object():
     print(callGamma/putGamma)
 
 
-# if __name__ == '__main__':
-#     # read_pickle()
-#     # pickle_data()
-#     set_fin_object()
-    
+def get_hist(ticker, num_days, shift_date: int=0):
+    session = api_login()
+
+    params = {
+        'symbol': ticker,
+        'opt_range': 'all'
+    }
+
+    fin = Fin(session, params)
+    vol_params = {
+        'periodCount': num_days, # 3-month period
+        'periodType': 'month',
+        'candleSize': 'daily',
+        'candleTick': 1,
+        'endDate': datetime.now() - timedelta(days=shift_date),
+        'scale': 252 # trading days in year
+    }
+
+    return fin.get_historical_volatility(vol_params=vol_params)
+
+
+
+# data = get_fin('QQQ')
+
+# x = json.loads(data)
+# print()

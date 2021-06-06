@@ -5,17 +5,13 @@ import StockForm from './components/Form';
 import OptionChain from './components/OptionChain';
 
 function App() {
-  const [tickers, setTickers] = useState([]);
-
-  const addTicker = (ticker) => {
-    let stocks = [...tickers, ticker];
-    setTickers(stocks);
-  }
+  const [ticker, setTicker] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   return (
     <section>
-      <StockForm addStockLog={addTicker}/>
-      <OptionChain stocks={tickers}/>
+      <StockForm setIsLoading={setIsLoading} setTicker={setTicker}/>
+      <OptionChain ticker={ticker}/>
     </section>
   );
 }

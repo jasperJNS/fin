@@ -1,19 +1,11 @@
-import React, {useState} from 'react';
+import React from 'react';
+import Plot from "react-plotly.js";
 
-function OptionChain(props) {
+function OptionChain({ticker}) {
     return (
-        <table>
-            <thead>
-                <tr>
-                    <th>STONKS</th>
-                </tr>
-            </thead>
-            {props.stocks.map((v, i) => {
-                return <tr>
-                    <th>{v[0]}</th>
-                </tr>
-            })}
-        </table>
+        <div>
+            {ticker}
+        </div>
     )
 }
 

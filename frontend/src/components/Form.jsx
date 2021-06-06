@@ -1,25 +1,29 @@
 import React, {useState} from 'react';
-import {json as requestJson} from 'd3-request';
 
-function StockForm({addStockLog}) {
+function StockForm({setIsLoading, setTicker}) {
+
     const handleSubmit = (e) => {
-        addStockLog([ticker])
         e.preventDefault();
-        fetch(`http://localhost:5000/api/options/${ticker}`, {
+        
+        fetch(`http://localhost:5000/api/options/${tickerQuery}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'crossDomain': true
             }
-        }).then((error, response) => {
-            if (!error) {
-                console.log(response)
-            }
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log(data)
+            setTicker(JSON.stringify(data));
+            setIsLoading(false);
+        }, [])
+        .catch(err => {
+            console.log(err);
         })
     
     }
-    const [ticker, setTicker] = useState();
-
+    const [tickerQuery, setTickerQuery] = useState(null);
 
     return (
         <form onSubmit={e => {handleSubmit(e)}}>
@@ -28,8 +32,7 @@ function StockForm({addStockLog}) {
             <input
                 name='ticker'
                 type='text'
-                value={ticker}
-                onChange={e => setTicker(e.target.value)}
+                onChange={e => setTickerQuery(e.target.value)}
             />
 
             <input

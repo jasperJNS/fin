@@ -27,10 +27,11 @@ def get_fin(ticker):
 
     fin = Fin(session, params)
 
-    data = fin.get_json()
+    # data = fin.get_json()
+    gex = fin.calculate_gex()
 
     
-    return data
+    return gex
 
 def pickle_data():
     session = api_login()
@@ -85,7 +86,7 @@ def set_fin_object():
     
     ticker.get_options_by_delta(1, 0.4)
 
-    callGamma, putGamma = ticker.calculate_net_gamma()
+    gex = ticker.calculate_net_gamma()
     print(callGamma/putGamma)
 
 
@@ -111,7 +112,5 @@ def get_hist(ticker, num_days, shift_date: int=0):
 
 
 
-# data = get_fin('QQQ')
-
-# x = json.loads(data)
-# print()
+gex = get_fin('SPY')
+print()

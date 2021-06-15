@@ -14,7 +14,6 @@ from newsapi import NewsApiClient
 
 from .historical import get_history
 
-
 from .CallPut import CallPut
 
 class Fin:
@@ -187,10 +186,10 @@ class Fin:
         netPutGamma = 0
 
         for call in calls:
-            netCallGamma += call.get_net_gamma()
+            netCallGamma += call.get_net_gamma(self.underlying)
         
         for put in puts:
-            netPutGamma += put.get_net_gamma()
+            netPutGamma += put.get_net_gamma(self.underlying)
 
         return netCallGamma - netPutGamma
 

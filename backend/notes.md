@@ -67,3 +67,10 @@ Potential catalysts:
 
     Random news (CEO dying or another TSLA car crash)
         - not reliably actionable
+
+
+GEX:
+    high gex -> brakes, rubberbanding effect
+        - NOPE signals also stronger here, as mean reversion becomes more likely
+    low gex -> let winners ride
+        - NOPE not as reliable, more likely trend day

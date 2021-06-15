@@ -2,58 +2,59 @@ import time
 from datetime import datetime
 from collections.abc import MutableMapping
 import json
+import numpy as np
 
 class CallPut(MutableMapping):
     def __init__(self, *args, **kwargs):
-        # self._values = {
-        #     'putCall': '',
-        #     'symbol': '',
-        #     'description': '',
-        #     'exchangeName': '',
-        #     'bid': '',
-        #     'ask': '',
-        #     'last': '',
-        #     'mark': '',
-        #     'bidSize': '',
-        #     'askSize': '',
-        #     'bidAskSize': '',
-        #     'lastSize': '',
-        #     'highPrice': '',
-        #     'lowPrice': '',
-        #     'openPrice': '',
-        #     'closePrice': '',
-        #     'totalVolume': '',
-        #     'tradeDate': '',
-        #     'tradeTimeInLong': '',
-        #     'quoteTimeInLong': '',
-        #     'netChange': '',
-        #     'volatility': '',
-        #     'delta': '',
-        #     'gamma': '',
-        #     'theta': '',
-        #     'vega': '',
-        #     'rho': '',
-        #     'openInterest': '',
-        #     'timeValue': '',
-        #     'theoreticalOptionValue': '',
-        #     'theoreticalVolatility': '',
-        #     'optionDeliverablesList': '',
-        #     'strikePrice': '',
-        #     'expirationDate': '',
-        #     'daysToExpiration': '',
-        #     'expirationType': '',
-        #     'lastTradingDay': '',
-        #     'multiplier': '',
-        #     'settlementType': '',
-        #     'deliverableNote': '',
-        #     'isIndexOption': '',
-        #     'percentChange': '',
-        #     'markChange': '',
-        #     'markPercentChange': '',
-        #     'mini': '',
-        #     'nonStandard': '',
-        #     'inTheMoney': ''
-        # }
+        """
+            putCall
+            symbol
+            description
+            exchangeName
+            bid
+            ask
+            last
+            mark
+            bidSize
+            askSize
+            bidAskSize
+            lastSize
+            highPrice
+            lowPrice
+            openPrice
+            closePrice
+            totalVolume
+            tradeDate
+            tradeTimeInLong
+            quoteTimeInLong
+            netChange
+            volatility
+            delta
+            gamma
+            theta
+            vega
+            rho
+            openInterest
+            timeValue
+            theoreticalOptionValue
+            theoreticalVolatility
+            optionDeliverablesList
+            strikePrice
+            expirationDate
+            daysToExpiration
+            expirationType
+            lastTradingDay
+            multiplier
+            settlementType
+            deliverableNote
+            isIndexOption
+            percentChange
+            markChange
+            markPercentChange
+            mini
+            nonStandard
+            inTheMoney
+        """
         self._values = dict(*args, **kwargs)
 
         # set for dot notation access
@@ -75,9 +76,11 @@ class CallPut(MutableMapping):
     def get_net_delta(self):
         return self.totalVolume * self.delta
     
-    def get_net_gamma(self):
-        return self.openInterest * self.gamma
-    
+    def get_net_gamma(self, spot_price):
+        if not np.isnan(float(self.gamma)):
+            return self.openInterest * self.gamma * 100
+        return 0.0
+
     def _convert_readable_dates(self, epoch):
         '''
             @param: date in epoch milliseconds
@@ -121,11 +124,11 @@ class CallPut(MutableMapping):
     
     def items(self):
         return self._values.items()
-    
+
     def values(self):
         return self._values.values()
-    
+
     def _to_df(self):
         return pd.DataFrame.from_dict([self._values])
 
-    
+

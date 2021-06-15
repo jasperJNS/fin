@@ -9,6 +9,9 @@ Ideas:
 
 Sections:
     Options chain analysis
+        net gamma
+        net options delta
+        vol surfaces plotted across dates of expiry
     10-k sentiment analysis
     GUI compilation of data when searching a ticker, ie newsfeed + 10-k sentiment + options data
 

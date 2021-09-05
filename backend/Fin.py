@@ -16,6 +16,8 @@ from .historical import get_history
 
 from .CallPut import CallPut
 
+RISK_FREE_RATE = 0.0192 # current 10-year rate
+
 class Fin:
     def __init__(self, session=None, opt_params: dict = {}):
         '''
@@ -153,7 +155,7 @@ class Fin:
         else:
             raise FailedNewsException("No news found")
 
-    
+
     def calculate_nope(self):
         '''
             Net Options Pricing Effect
@@ -192,6 +194,46 @@ class Fin:
             netPutGamma += put.get_net_gamma(self.underlying)
 
         return netCallGamma - netPutGamma
+
+    def derive_vanna(self):
+        '''
+            vanna = rate at which delta changes wrt volatility and vega wrt spot 
+            long calls and short puts have positive vanna
+            short calls, long puts have negative vanna
+
+            increase in vol increases effect of delta on option price
+
+            @return: calls and puts with vanna concatenated to them
+        '''
+        S = self.underlying
+        r = RISK_FREE_RATE
+
+
+        # assuming zero dividends
+        for call in self.data['calls']:
+            K = call.strikePrice
+            sigma = call.volatility
+            t = call.daysToExpiration
+
+            d1 = (np.log(S/K) + (r + (sigma**2)/2)*t)/(sigma * np.sqrt(t))
+            N_d1 = np.exp(-(d1**2)/2) * (1/(2*np.pi))
+            
+            vanna = np.sqrt(t) * N_d1 * (1 - d1)
+            call.vanna = vanna
+        
+        for put in self.data['puts']:
+            K = put.strikePrice
+            sigma = put.volatility
+            t = put.daysToExpiration
+
+            d1 = (np.log(S/K) + (r + (sigma**2)/2)*t)/(sigma * np.sqrt(t))
+            N_d1 = np.exp(-(d1**2)/2) * (1/2*np.pi)
+            
+            vanna = np.sqrt(t) * N_d1 * (1 - d1)
+            put.vanna = vanna
+
+
+        return
 
     def get_options_by_delta(self, date: int, deltaRange: float):
         '''
